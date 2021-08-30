@@ -86,7 +86,7 @@ int sendBroadcastmessage(int clientfd)
     printf("read from client(clientID = %d)\n", clientfd);
     int len = recv(clientfd, buf, BUF_SIZE, 0);
 
-    if(len == 0)  // len = 0 means the client closed connection
+    if(len <= 0)  // len = 0 means the client closed connection
     {
         close(clientfd);
         clients_list.remove(clientfd); //server remove the client
