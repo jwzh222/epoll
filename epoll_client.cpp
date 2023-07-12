@@ -2,44 +2,44 @@
 
 int main(int argc, char *argv[])
 {
-    //ÓÃ»§Á¬½ÓµÄ·şÎñÆ÷ IP + port
+    //ç”¨æˆ·è¿æ¥çš„æœåŠ¡å™¨ IP + port
     struct sockaddr_in serverAddr;
     serverAddr.sin_family = PF_INET;
     serverAddr.sin_port = htons(SERVER_PORT);
     serverAddr.sin_addr.s_addr = inet_addr(SERVER_IP);
 
-    // ´´½¨socket
+    // åˆ›å»ºsocket
     int sock = socket(PF_INET, SOCK_STREAM, 0);
     if(sock < 0) { perror("sock error"); exit(-1); }
-    // Á¬½Ó·şÎñ¶Ë
+    // è¿æ¥æœåŠ¡ç«¯
     if(connect(sock, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
         perror("connect error");
         exit(-1);
     }
 
-    // ´´½¨¹ÜµÀ£¬ÆäÖĞfd[0]ÓÃÓÚ¸¸½ø³Ì¶Á£¬fd[1]ÓÃÓÚ×Ó½ø³ÌĞ´
+    // åˆ›å»ºç®¡é“ï¼Œå…¶ä¸­fd[0]ç”¨äºçˆ¶è¿›ç¨‹è¯»ï¼Œfd[1]ç”¨äºå­è¿›ç¨‹å†™
     int pipe_fd[2];
     if(pipe(pipe_fd) < 0) { perror("pipe error"); exit(-1); }
 
-    // ´´½¨epoll
+    // åˆ›å»ºepoll
     int epfd = epoll_create(EPOLL_SIZE);
     if(epfd < 0) { perror("epfd error"); exit(-1); }
     static struct epoll_event events[2];
-    //½«sockºÍ¹ÜµÀ¶Á¶ËÃèÊö·û¶¼Ìí¼Óµ½ÄÚºËÊÂ¼ş±íÖĞ
+    //å°†sockå’Œç®¡é“è¯»ç«¯æè¿°ç¬¦éƒ½æ·»åŠ åˆ°å†…æ ¸äº‹ä»¶è¡¨ä¸­
     addfd(epfd, sock, true);
     addfd(epfd, pipe_fd[0], true);
-    // ±íÊ¾¿Í»§¶ËÊÇ·ñÕı³£¹¤×÷
+    // è¡¨ç¤ºå®¢æˆ·ç«¯æ˜¯å¦æ­£å¸¸å·¥ä½œ
     bool isClientwork = true;
 
-    // ÁÄÌìĞÅÏ¢»º³åÇø
+    // èŠå¤©ä¿¡æ¯ç¼“å†²åŒº
     char message[BUF_SIZE];
 
     // Fork
     int pid = fork();
     if(pid < 0) { perror("fork error"); exit(-1); }
-    else if(pid == 0)      // ×Ó½ø³Ì
+    else if(pid == 0)      // å­è¿›ç¨‹
     {
-        //×Ó½ø³Ì¸ºÔğĞ´Èë¹ÜµÀ£¬Òò´ËÏÈ¹Ø±Õ¶Á¶Ë
+        //å­è¿›ç¨‹è´Ÿè´£å†™å…¥ç®¡é“ï¼Œå› æ­¤å…ˆå…³é—­è¯»ç«¯
         close(pipe_fd[0]);
         printf("Please input 'exit' to exit the chat room\n");
 
@@ -47,37 +47,37 @@ int main(int argc, char *argv[])
             bzero(&message, BUF_SIZE);
             fgets(message, BUF_SIZE, stdin);
 
-            // ¿Í»§Êä³öexit,ÍË³ö
+            // å®¢æˆ·è¾“å‡ºexit,é€€å‡º
             if(strncasecmp(message, EXIT, strlen(EXIT)) == 0){
                 isClientwork = 0;
             }
-            // ×Ó½ø³Ì½«ĞÅÏ¢Ğ´Èë¹ÜµÀ
+            // å­è¿›ç¨‹å°†ä¿¡æ¯å†™å…¥ç®¡é“
             else {
                 if( write(pipe_fd[1], message, strlen(message) - 1 ) < 0 )
                  { perror("fork error"); exit(-1); }
             }
         }
     }
-    else  //pid > 0 ¸¸½ø³Ì
+    else  //pid > 0 çˆ¶è¿›ç¨‹
     {
-        //¸¸½ø³Ì¸ºÔğ¶Á¹ÜµÀÊı¾İ£¬Òò´ËÏÈ¹Ø±ÕĞ´¶Ë
+        //çˆ¶è¿›ç¨‹è´Ÿè´£è¯»ç®¡é“æ•°æ®ï¼Œå› æ­¤å…ˆå…³é—­å†™ç«¯
         close(pipe_fd[1]);
 
-        // Ö÷Ñ­»·(epoll_wait)
+        // ä¸»å¾ªç¯(epoll_wait)
         while(isClientwork) {
             int epoll_events_count = epoll_wait( epfd, events, 2, -1 );
-            //´¦Àí¾ÍĞ÷ÊÂ¼ş
+            //å¤„ç†å°±ç»ªäº‹ä»¶
             for(int i = 0; i < epoll_events_count ; ++i)
             {
                 bzero(&message, BUF_SIZE);
 
-                //·şÎñ¶Ë·¢À´ÏûÏ¢
+                //æœåŠ¡ç«¯å‘æ¥æ¶ˆæ¯
                 if(events[i].data.fd == sock)
                 {
-                    //½ÓÊÜ·şÎñ¶ËÏûÏ¢
+                    //æ¥å—æœåŠ¡ç«¯æ¶ˆæ¯
                     int ret = recv(sock, message, BUF_SIZE, 0);
 
-                    // ret= 0 ·şÎñ¶Ë¹Ø±Õ
+                    // ret= 0 æœåŠ¡ç«¯å…³é—­
                     if(ret == 0) {
                         printf("Server closed connection: %d\n", sock);
                         close(sock);
@@ -86,15 +86,15 @@ int main(int argc, char *argv[])
                     else printf("%s\n", message);
 
                 }
-                //×Ó½ø³ÌĞ´ÈëÊÂ¼ş·¢Éú£¬¸¸½ø³Ì´¦Àí²¢·¢ËÍ·şÎñ¶Ë
+                //å­è¿›ç¨‹å†™å…¥äº‹ä»¶å‘ç”Ÿï¼Œçˆ¶è¿›ç¨‹å¤„ç†å¹¶å‘é€æœåŠ¡ç«¯
                 else {
-                    //¸¸½ø³Ì´Ó¹ÜµÀÖĞ¶ÁÈ¡Êı¾İ
+                    //çˆ¶è¿›ç¨‹ä»ç®¡é“ä¸­è¯»å–æ•°æ®
                     int ret = read(events[i].data.fd, message, BUF_SIZE);
 
                     // ret = 0
                     if(ret == 0) isClientwork = 0;
-                    else{   // ½«ĞÅÏ¢·¢ËÍ¸ø·şÎñ¶Ë
-                      send(sock, message, BUF_SIZE, 0);
+                    else{   // å°†ä¿¡æ¯å‘é€ç»™æœåŠ¡ç«¯
+                      send(sock, message, ret, 0);
                     }
                 }
             }//for
@@ -102,11 +102,11 @@ int main(int argc, char *argv[])
     }
 
     if(pid){
-       //¹Ø±Õ¸¸½ø³ÌºÍsock
+       //å…³é—­çˆ¶è¿›ç¨‹å’Œsock
         close(pipe_fd[0]);
         close(sock);
     }else{
-        //¹Ø±Õ×Ó½ø³Ì
+        //å…³é—­å­è¿›ç¨‹
         close(pipe_fd[1]);
     }
     return 0;
